@@ -22,7 +22,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	UStaticMeshComponent* EnemyMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Movement",
+		meta = (ExposeOnSpawn = "true")
+	)
 	AActor* PathActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
