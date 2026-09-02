@@ -222,11 +222,12 @@ void ATDTowerBase::Tick(float DeltaTime)
 
 void ATDTowerBase::FindTarget()
 {
-	TArray<AActor*> OverlappingActors;
+	TArray<AActor*> Enemies;
 
-	AttackRange->GetOverlappingActors(
-		OverlappingActors,
-		ATDEnemy::StaticClass()
+	UGameplayStatics::GetAllActorsOfClass(
+		GetWorld(),
+		ATDEnemy::StaticClass(),
+		Enemies
 	);
 
 	CurrentTarget = nullptr;
@@ -234,7 +235,13 @@ void ATDTowerBase::FindTarget()
 	float FurthestDistance =
 		-TNumericLimits<float>::Max();
 
-	for (AActor* Actor : OverlappingActors)
+	const FVector TowerLocation =
+		GetActorLocation();
+
+	const float RangeSquared =
+		Range * Range;
+
+	for (AActor* Actor : Enemies)
 	{
 		ATDEnemy* Enemy =
 			Cast<ATDEnemy>(Actor);
@@ -244,10 +251,22 @@ void ATDTowerBase::FindTarget()
 			continue;
 		}
 
+		const float DistanceSquared =
+			FVector::DistSquared(
+				TowerLocation,
+				Enemy->GetActorLocation()
+			);
+
+		// ŽË’öŠO
+		if (DistanceSquared > RangeSquared)
+		{
+			continue;
+		}
+
 		const float EnemyDistance =
 			Enemy->GetDistanceAlongSpline();
 
-		// ˆê”ÔƒS[ƒ‹‚É‹ß‚¢“G
+		// ŽË’ö“à‚Åˆê”ÔƒS[ƒ‹‚É‹ß‚¢“G
 		if (EnemyDistance > FurthestDistance)
 		{
 			FurthestDistance =

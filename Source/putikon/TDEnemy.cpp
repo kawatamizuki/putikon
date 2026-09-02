@@ -4,6 +4,7 @@
 
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 ATDEnemy::ATDEnemy()
@@ -27,24 +28,48 @@ void ATDEnemy::BeginPlay()
 
 	CurrentHealth = MaxHealth;
 
+	// BP‚Å’Ç‰Á‚µ‚½SkeletalMesh‚ð’T‚·
+	VisualSkeletalMesh =
+		FindComponentByClass<USkeletalMeshComponent>();
+
+	if (VisualSkeletalMesh)
+	{
+		InitialMeshRelativeLocation =
+			VisualSkeletalMesh->GetRelativeLocation();
+
+		InitialMeshRelativeRotation =
+			VisualSkeletalMesh->GetRelativeRotation();
+	}
+
 	if (PathActor)
 	{
 		PathSpline =
-			PathActor->FindComponentByClass<
-			USplineComponent
-			>();
+			PathActor->FindComponentByClass<USplineComponent>();
 
 		if (PathSpline)
 		{
 			const FVector StartLocation =
-				PathSpline
-				->GetLocationAtDistanceAlongSpline(
+				PathSpline->GetLocationAtDistanceAlongSpline(
 					0.0f,
 					ESplineCoordinateSpace::World
 				);
 
-			SetActorLocation(
-				StartLocation
+			const FVector StartDirection =
+				PathSpline->GetDirectionAtDistanceAlongSpline(
+					0.0f,
+					ESplineCoordinateSpace::World
+				);
+
+			FRotator StartRotation =
+				StartDirection.Rotation();
+
+			StartRotation.Pitch = 0.0f;
+			StartRotation.Roll = 0.0f;
+			StartRotation.Yaw += FacingYawOffset;
+
+			SetActorLocationAndRotation(
+				StartLocation,
+				StartRotation
 			);
 		}
 	}
@@ -63,8 +88,7 @@ void ATDEnemy::ReceiveArrowDamage(
 		DamageAmount *
 		ArrowDamageMultiplier;
 
-	CurrentHealth -=
-		FinalDamage;
+	CurrentHealth -= FinalDamage;
 
 	if (CurrentHealth <= 0.0f)
 	{
@@ -85,8 +109,7 @@ void ATDEnemy::ReceiveCannonDamage(
 		DamageAmount *
 		CannonDamageMultiplier;
 
-	CurrentHealth -=
-		FinalDamage;
+	CurrentHealth -= FinalDamage;
 
 	if (CurrentHealth <= 0.0f)
 	{
@@ -115,8 +138,7 @@ void ATDEnemy::DropCoins()
 		return;
 	}
 
-	UWorld* World =
-		GetWorld();
+	UWorld* World = GetWorld();
 
 	if (!World)
 	{
@@ -131,8 +153,7 @@ void ATDEnemy::DropCoins()
 
 	const int32 CoinCount =
 		FMath::Max(
-			BaseMoneyReward +
-			RandomOffset,
+			BaseMoneyReward + RandomOffset,
 			0
 		);
 
@@ -144,7 +165,6 @@ void ATDEnemy::DropCoins()
 		FVector SpawnLocation =
 			EnemyLocation;
 
-		// ­‚µ‚Î‚ç‚¯‚³‚¹‚é
 		SpawnLocation.X +=
 			FMath::FRandRange(
 				-35.0f,
@@ -165,13 +185,10 @@ void ATDEnemy::DropCoins()
 
 		FActorSpawnParameters SpawnParams;
 
-		// ƒRƒCƒ“‘¤‚Åu—Ž‚Æ‚µ‚½“Gv‚ð–³Ž‹‚Å‚«‚é‚æ‚¤‚É‚·‚é
 		SpawnParams.Owner = this;
 
-		SpawnParams
-			.SpawnCollisionHandlingOverride =
-			ESpawnActorCollisionHandlingMethod
-			::AlwaysSpawn;
+		SpawnParams.SpawnCollisionHandlingOverride =
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 		World->SpawnActor<AActor>(
 			CoinClass,
@@ -182,13 +199,54 @@ void ATDEnemy::DropCoins()
 	}
 }
 
+void ATDEnemy::UpdateVisualAnimation(
+	float DeltaTime
+)
+{
+	if (!VisualSkeletalMesh)
+	{
+		return;
+	}
+
+	AnimationTime += DeltaTime;
+
+	// ã‰º‰^“®
+	const float BobOffset =
+		FMath::Sin(
+			AnimationTime * BobSpeed
+		) * BobHeight;
+
+	FVector NewRelativeLocation =
+		InitialMeshRelativeLocation;
+
+	NewRelativeLocation.Z += BobOffset;
+
+	VisualSkeletalMesh->SetRelativeLocation(
+		NewRelativeLocation
+	);
+
+	// ¶‰E‚ÉŒX‚­
+	const float Sway =
+		FMath::Sin(
+			AnimationTime * SwaySpeed
+		) * SwayAngle;
+
+	FRotator NewRelativeRotation =
+		InitialMeshRelativeRotation;
+
+	// ‘OŒã•ûŒü‚É‘Î‚µ‚Ä¶‰E‚ÖŒX‚­
+	NewRelativeRotation.Yaw += Sway;
+
+	VisualSkeletalMesh->SetRelativeRotation(
+		NewRelativeRotation
+	);
+}
+
 void ATDEnemy::Tick(
 	float DeltaTime
 )
 {
-	Super::Tick(
-		DeltaTime
-	);
+	Super::Tick(DeltaTime);
 
 	if (!PathSpline)
 	{
@@ -201,16 +259,12 @@ void ATDEnemy::Tick(
 	}
 
 	DistanceAlongSpline +=
-		MoveSpeed *
-		DeltaTime;
+		MoveSpeed * DeltaTime;
 
 	const float SplineLength =
 		PathSpline->GetSplineLength();
 
-	if (
-		DistanceAlongSpline >=
-		SplineLength
-		)
+	if (DistanceAlongSpline >= SplineLength)
 	{
 		AActor* BaseActor =
 			UGameplayStatics::GetActorOfClass(
@@ -219,37 +273,42 @@ void ATDEnemy::Tick(
 			);
 
 		ATDBase* Base =
-			Cast<ATDBase>(
-				BaseActor
-			);
+			Cast<ATDBase>(BaseActor);
 
 		if (Base)
 		{
 			Base->EnemyReachedGoal();
 		}
 
-		// ƒS[ƒ‹“ž’B‚Å‚ÍƒRƒCƒ“‚ð—Ž‚Æ‚³‚È‚¢
 		Destroy();
 
 		return;
 	}
 
 	const FVector NewLocation =
-		PathSpline
-		->GetLocationAtDistanceAlongSpline(
+		PathSpline->GetLocationAtDistanceAlongSpline(
 			DistanceAlongSpline,
 			ESplineCoordinateSpace::World
 		);
 
-	const FRotator NewRotation =
-		PathSpline
-		->GetRotationAtDistanceAlongSpline(
+	const FVector MoveDirection =
+		PathSpline->GetDirectionAtDistanceAlongSpline(
 			DistanceAlongSpline,
 			ESplineCoordinateSpace::World
 		);
+
+	FRotator NewRotation =
+		MoveDirection.Rotation();
+
+	NewRotation.Pitch = 0.0f;
+	NewRotation.Roll = 0.0f;
+	NewRotation.Yaw += FacingYawOffset;
 
 	SetActorLocationAndRotation(
 		NewLocation,
 		NewRotation
 	);
+
+	// ƒSƒuƒŠƒ“‚ÌŒ©‚½–Ú‚¾‚¯—h‚ç‚·
+	UpdateVisualAnimation(DeltaTime);
 }

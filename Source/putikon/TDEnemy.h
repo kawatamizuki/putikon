@@ -5,6 +5,7 @@
 #include "TDEnemy.generated.h"
 
 class UStaticMeshComponent;
+class USkeletalMeshComponent;
 class USplineComponent;
 
 UCLASS()
@@ -25,6 +26,8 @@ public:
 	{
 		return DistanceAlongSpline;
 	}
+
+	virtual void Tick(float DeltaTime) override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -50,6 +53,46 @@ protected:
 		Category = "Movement"
 	)
 	float MoveSpeed = 200.0f;
+
+	// ゴブリンモデルの正面方向補正
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Movement"
+	)
+	float FacingYawOffset = 0.0f;
+
+	// 上下に揺れる高さ
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Animation"
+	)
+	float BobHeight = 8.0f;
+
+	// 上下揺れの速さ
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Animation"
+	)
+	float BobSpeed = 7.0f;
+
+	// 左右に傾く角度
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Animation"
+	)
+	float SwayAngle = 8.0f;
+
+	// 左右に傾く速さ
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Animation"
+	)
+	float SwaySpeed = 7.0f;
 
 	UPROPERTY(
 		EditAnywhere,
@@ -79,7 +122,6 @@ protected:
 	)
 	float CannonDamageMultiplier = 1.0f;
 
-	// 落とすコインBP
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -87,7 +129,6 @@ protected:
 	)
 	TSubclassOf<AActor> CoinClass;
 
-	// 基本ドロップ枚数
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -95,7 +136,6 @@ protected:
 	)
 	int32 BaseMoneyReward = 10;
 
-	// 基本値から±何枚するか
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -106,14 +146,18 @@ protected:
 private:
 	USplineComponent* PathSpline = nullptr;
 
+	// BPで追加したゴブリンのSkeletalMesh
+	USkeletalMeshComponent* VisualSkeletalMesh = nullptr;
+
+	FVector InitialMeshRelativeLocation = FVector::ZeroVector;
+	FRotator InitialMeshRelativeRotation = FRotator::ZeroRotator;
+
 	float DistanceAlongSpline = 0.0f;
+	float AnimationTime = 0.0f;
 
 	bool bDead = false;
 
 	void Die();
-
 	void DropCoins();
-
-public:
-	virtual void Tick(float DeltaTime) override;
+	void UpdateVisualAnimation(float DeltaTime);
 };
