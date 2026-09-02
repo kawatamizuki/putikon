@@ -1,4 +1,6 @@
 #include "TDBuildTree.h"
+
+#include "TDTowerBuildData.h"
 #include "TDPlayerMoneyComponent.h"
 
 #include "GameFramework/Character.h"
@@ -9,17 +11,43 @@ ATDBuildTree::ATDBuildTree()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ATDBuildTree::BuildTower()
+int32 ATDBuildTree::GetTowerOptionCount() const
 {
-	if (!TowerClass)
-	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("TowerClass is not set.")
-		);
+	return TowerOptions.Num();
+}
 
-		return;
+UTDTowerBuildData* ATDBuildTree::GetTowerOption(
+	int32 Index
+) const
+{
+	if (!TowerOptions.IsValidIndex(Index))
+	{
+		return nullptr;
+	}
+
+	return TowerOptions[Index];
+}
+
+bool ATDBuildTree::BuildTowerByIndex(
+	int32 Index
+)
+{
+	if (!TowerOptions.IsValidIndex(Index))
+	{
+		return false;
+	}
+
+	UTDTowerBuildData* TowerData =
+		TowerOptions[Index];
+
+	if (!IsValid(TowerData))
+	{
+		return false;
+	}
+
+	if (!TowerData->TowerClass)
+	{
+		return false;
 	}
 
 	UWorld* World =
@@ -27,10 +55,9 @@ void ATDBuildTree::BuildTower()
 
 	if (!World)
 	{
-		return;
+		return false;
 	}
 
-	// ƒvƒŒƒCƒ„[æ“¾
 	ACharacter* Player =
 		UGameplayStatics::GetPlayerCharacter(
 			World,
@@ -39,10 +66,9 @@ void ATDBuildTree::BuildTower()
 
 	if (!IsValid(Player))
 	{
-		return;
+		return false;
 	}
 
-	// MoneyComponentæ“¾
 	UTDPlayerMoneyComponent* MoneyComponent =
 		Player->FindComponentByClass<
 		UTDPlayerMoneyComponent
@@ -50,18 +76,12 @@ void ATDBuildTree::BuildTower()
 
 	if (!MoneyComponent)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("TDPlayerMoneyComponent not found.")
-		);
-
-		return;
+		return false;
 	}
 
-	// ‚¨‹à‚ª‘«‚è‚é‚©Šm”F
+	// ‚¨‹à‚ğx•¥‚¤
 	if (!MoneyComponent->SpendMoney(
-		BuildCost
+		TowerData->Cost
 	))
 	{
 		UE_LOG(
@@ -70,15 +90,13 @@ void ATDBuildTree::BuildTower()
 			TEXT("Not enough money.")
 		);
 
-		return;
+		return false;
 	}
 
 	FVector SpawnLocation =
 		GetActorLocation();
 
 	// ’n–Ê‚ğ’T‚·
-	FHitResult HitResult;
-
 	const FVector TraceStart =
 		SpawnLocation +
 		FVector(
@@ -94,6 +112,8 @@ void ATDBuildTree::BuildTower()
 			0.0f,
 			1000.0f
 		);
+
+	FHitResult HitResult;
 
 	FCollisionQueryParams QueryParams;
 
@@ -145,20 +165,23 @@ void ATDBuildTree::BuildTower()
 
 	AActor* SpawnedTower =
 		World->SpawnActor<AActor>(
-			TowerClass,
+			TowerData->TowerClass,
 			SpawnTransform,
 			SpawnParams
 		);
 
-	if (SpawnedTower)
+	if (!SpawnedTower)
 	{
-		Destroy();
-	}
-	else
-	{
-		// Spawn¸”s‚µ‚½‚ç•Ô‹à
+		// Spawn¸”s‚Í•Ô‹à
 		MoneyComponent->AddMoney(
-			BuildCost
+			TowerData->Cost
 		);
+
+		return false;
 	}
+
+	// Œšİ¬Œ÷
+	Destroy();
+
+	return true;
 }

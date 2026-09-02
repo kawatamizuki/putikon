@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "TDBuildTree.generated.h"
 
+class UTDTowerBuildData;
+
 UCLASS()
 class PUTIKON_API ATDBuildTree : public AActor
 {
@@ -12,23 +14,32 @@ class PUTIKON_API ATDBuildTree : public AActor
 public:
 	ATDBuildTree();
 
+	// この木から建築できるタワー一覧
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
 		Category = "Build"
 	)
-	TSubclassOf<AActor> TowerClass;
+	TArray<UTDTowerBuildData*> TowerOptions;
 
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadWrite,
-		Category = "Build"
-	)
-	int32 BuildCost = 100;
-
+	// 指定番号のタワーを建設
 	UFUNCTION(
 		BlueprintCallable,
 		Category = "Build"
 	)
-	void BuildTower();
+	bool BuildTowerByIndex(int32 Index);
+
+	// タワー候補数
+	UFUNCTION(
+		BlueprintPure,
+		Category = "Build"
+	)
+	int32 GetTowerOptionCount() const;
+
+	// 指定番号のデータを取得
+	UFUNCTION(
+		BlueprintPure,
+		Category = "Build"
+	)
+	UTDTowerBuildData* GetTowerOption(int32 Index) const;
 };
