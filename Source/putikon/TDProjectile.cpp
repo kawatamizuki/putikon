@@ -13,17 +13,19 @@ ATDProjectile::ATDProjectile()
 			TEXT("ProjectileMesh")
 		);
 
-	SetRootComponent(ProjectileMesh);
+	SetRootComponent(
+		ProjectileMesh
+	);
 
-	// 当たり判定は使わない
 	ProjectileMesh->SetCollisionEnabled(
 		ECollisionEnabled::NoCollision
 	);
 
-	// UE標準Cube
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(
-		TEXT("/Engine/BasicShapes/Cube.Cube")
-	);
+	// UE標準Cubeを細長くして矢として使用
+	static ConstructorHelpers::FObjectFinder<UStaticMesh>
+		CubeMesh(
+			TEXT("/Engine/BasicShapes/Cube.Cube")
+		);
 
 	if (CubeMesh.Succeeded())
 	{
@@ -31,12 +33,11 @@ ATDProjectile::ATDProjectile()
 			CubeMesh.Object
 		);
 
-		// 細長い棒にする
 		ProjectileMesh->SetRelativeScale3D(
 			FVector(
-				1.6f,
-				0.6f,
-				0.6f
+				0.8f,
+				0.08f,
+				0.08f
 			)
 		);
 	}
@@ -45,6 +46,19 @@ ATDProjectile::ATDProjectile()
 void ATDProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// BP側に古いScaleが残っていても、
+	// 実行時に必ず矢の細さへ戻す
+	if (ProjectileMesh)
+	{
+		ProjectileMesh->SetRelativeScale3D(
+			FVector(
+				0.8f,
+				0.08f,
+				0.08f
+			)
+		);
+	}
 }
 
 void ATDProjectile::InitializeProjectile(
@@ -52,13 +66,20 @@ void ATDProjectile::InitializeProjectile(
 	float DamageAmount
 )
 {
-	Target = TargetEnemy;
-	Damage = DamageAmount;
+	Target =
+		TargetEnemy;
+
+	Damage =
+		DamageAmount;
 }
 
-void ATDProjectile::Tick(float DeltaTime)
+void ATDProjectile::Tick(
+	float DeltaTime
+)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick(
+		DeltaTime
+	);
 
 	if (!IsValid(Target))
 	{
@@ -73,16 +94,21 @@ void ATDProjectile::Tick(float DeltaTime)
 		Target->GetActorLocation();
 
 	const FVector ToTarget =
-		TargetLocation - CurrentLocation;
+		TargetLocation -
+		CurrentLocation;
 
 	const float Distance =
 		ToTarget.Size();
 
 	const float MoveDistance =
-		MoveSpeed * DeltaTime;
+		MoveSpeed *
+		DeltaTime;
 
 	// 敵まで届いたら命中
-	if (Distance <= MoveDistance + HitDistance)
+	if (
+		Distance <=
+		MoveDistance + HitDistance
+		)
 	{
 		Target->ReceiveArrowDamage(
 			Damage
@@ -95,14 +121,15 @@ void ATDProjectile::Tick(float DeltaTime)
 	const FVector Direction =
 		ToTarget.GetSafeNormal();
 
-	// 棒を進行方向へ向ける
+	// 矢を進行方向へ向ける
 	SetActorRotation(
 		Direction.Rotation()
 	);
 
 	const FVector NewLocation =
-		CurrentLocation
-		+ Direction * MoveDistance;
+		CurrentLocation +
+		Direction *
+		MoveDistance;
 
 	SetActorLocation(
 		NewLocation

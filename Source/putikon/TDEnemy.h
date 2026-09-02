@@ -6,7 +6,6 @@
 
 class UStaticMeshComponent;
 class USplineComponent;
-class ATDCoinPickup;
 
 UCLASS()
 class PUTIKON_API ATDEnemy : public AActor
@@ -80,13 +79,13 @@ protected:
 	)
 	float CannonDamageMultiplier = 1.0f;
 
-	// 落とすコイン
+	// 落とすコインBP
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
 		Category = "Reward"
 	)
-	TSubclassOf<ATDCoinPickup> CoinClass;
+	TSubclassOf<AActor> CoinClass;
 
 	// 基本ドロップ枚数
 	UPROPERTY(
@@ -105,7 +104,7 @@ protected:
 	int32 MoneyRandomRange = 3;
 
 private:
-	USplineComponent* PathSpline;
+	USplineComponent* PathSpline = nullptr;
 
 	float DistanceAlongSpline = 0.0f;
 

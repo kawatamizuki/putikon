@@ -1,7 +1,6 @@
 #include "TDEnemy.h"
 
 #include "TDBase.h"
-#include "TDCoinPickup.h"
 
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -26,8 +25,7 @@ void ATDEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CurrentHealth =
-		MaxHealth;
+	CurrentHealth = MaxHealth;
 
 	if (PathActor)
 	{
@@ -146,9 +144,18 @@ void ATDEnemy::DropCoins()
 		FVector SpawnLocation =
 			EnemyLocation;
 
-		// 少しだけ位置をばらけさせる
-		SpawnLocation.X += FMath::FRandRange(-35.0f, 35.0f);
-		SpawnLocation.Y += FMath::FRandRange(-35.0f, 35.0f);
+		// 少しばらけさせる
+		SpawnLocation.X +=
+			FMath::FRandRange(
+				-35.0f,
+				35.0f
+			);
+
+		SpawnLocation.Y +=
+			FMath::FRandRange(
+				-35.0f,
+				35.0f
+			);
 
 		SpawnLocation.Z +=
 			FMath::FRandRange(
@@ -158,12 +165,15 @@ void ATDEnemy::DropCoins()
 
 		FActorSpawnParameters SpawnParams;
 
+		// コイン側で「落とした敵」を無視できるようにする
+		SpawnParams.Owner = this;
+
 		SpawnParams
 			.SpawnCollisionHandlingOverride =
 			ESpawnActorCollisionHandlingMethod
 			::AlwaysSpawn;
 
-		World->SpawnActor<ATDCoinPickup>(
+		World->SpawnActor<AActor>(
 			CoinClass,
 			SpawnLocation,
 			FRotator::ZeroRotator,
@@ -203,8 +213,7 @@ void ATDEnemy::Tick(
 		)
 	{
 		AActor* BaseActor =
-			UGameplayStatics
-			::GetActorOfClass(
+			UGameplayStatics::GetActorOfClass(
 				GetWorld(),
 				ATDBase::StaticClass()
 			);

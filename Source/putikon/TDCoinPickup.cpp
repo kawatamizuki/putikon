@@ -15,7 +15,9 @@ ATDCoinPickup::ATDCoinPickup()
 			TEXT("CoinMesh")
 		);
 
-	SetRootComponent(CoinMesh);
+	SetRootComponent(
+		CoinMesh
+	);
 
 	CoinMesh->SetCollisionEnabled(
 		ECollisionEnabled::NoCollision
@@ -28,34 +30,54 @@ void ATDCoinPickup::BeginPlay()
 
 	FindGround();
 
-	const FVector RandomDirection =
-		FVector(
-			FMath::FRandRange(-1.0f, 1.0f),
-			FMath::FRandRange(-1.0f, 1.0f),
-			0.0f
-		).GetSafeNormal();
+	// 横方向をランダムに決める
+	FVector RandomDirection(
+		FMath::FRandRange(-1.0f, 1.0f),
+		FMath::FRandRange(-1.0f, 1.0f),
+		0.0f
+	);
+
+	if (RandomDirection.IsNearlyZero())
+	{
+		RandomDirection =
+			FVector(
+				1.0f,
+				0.0f,
+				0.0f
+			);
+	}
+
+	RandomDirection.Normalize();
 
 	const float RandomHorizontalSpeed =
 		FMath::FRandRange(
-			InitialHorizontalSpeed * 0.5f,
+			InitialHorizontalSpeed * 0.65f,
 			InitialHorizontalSpeed
 		);
 
 	MoveVelocity =
-		RandomDirection * RandomHorizontalSpeed;
+		RandomDirection *
+		RandomHorizontalSpeed;
 
+	// 全コインを必ず上へ飛ばす
 	MoveVelocity.Z =
 		FMath::FRandRange(
-			InitialUpSpeed * 0.8f,
-			InitialUpSpeed * 1.2f
+			InitialUpSpeed * 0.9f,
+			InitialUpSpeed * 1.15f
 		);
+
+	bLanded = false;
 }
 
-void ATDCoinPickup::Tick(float DeltaTime)
+void ATDCoinPickup::Tick(
+	float DeltaTime
+)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick(
+		DeltaTime
+	);
 
-	// コインをくるくる回す
+	// 回転
 	AddActorLocalRotation(
 		FRotator(
 			0.0f,
@@ -64,36 +86,68 @@ void ATDCoinPickup::Tick(float DeltaTime)
 		)
 	);
 
+	// 空中
 	if (!bLanded)
 	{
-		UpdateDropMovement(DeltaTime);
+		UpdateDropMovement(
+			DeltaTime
+		);
+
+		return;
 	}
 
-	UpdateAttraction(DeltaTime);
+	// 着地後だけ吸引
+	UpdateAttraction(
+		DeltaTime
+	);
 }
 
 void ATDCoinPickup::FindGround()
 {
-	UWorld* World = GetWorld();
+	UWorld* World =
+		GetWorld();
 
 	if (!World)
 	{
+		GroundZ =
+			GetActorLocation().Z -
+			100.0f;
+
 		return;
 	}
 
 	const FVector Start =
 		GetActorLocation() +
-		FVector(0.0f, 0.0f, 300.0f);
+		FVector(
+			0.0f,
+			0.0f,
+			300.0f
+		);
 
 	const FVector End =
 		GetActorLocation() -
-		FVector(0.0f, 0.0f, 1000.0f);
+		FVector(
+			0.0f,
+			0.0f,
+			1500.0f
+		);
 
 	FHitResult HitResult;
 
 	FCollisionQueryParams Params;
 
-	Params.AddIgnoredActor(this);
+	// 自分自身を無視
+	Params.AddIgnoredActor(
+		this
+	);
+
+	// コインを落とした敵も無視
+	if (AActor* OwnerActor = GetOwner())
+	{
+		Params.AddIgnoredActor(
+			OwnerActor
+		);
+	}
 
 	const bool bHit =
 		World->LineTraceSingleByChannel(
@@ -113,7 +167,8 @@ void ATDCoinPickup::FindGround()
 	else
 	{
 		GroundZ =
-			GetActorLocation().Z;
+			GetActorLocation().Z -
+			100.0f;
 	}
 }
 
@@ -121,13 +176,17 @@ void ATDCoinPickup::UpdateDropMovement(
 	float DeltaTime
 )
 {
+	// 重力を加える
 	MoveVelocity.Z -=
-		Gravity * DeltaTime;
+		Gravity *
+		DeltaTime;
 
 	FVector NewLocation =
 		GetActorLocation() +
-		MoveVelocity * DeltaTime;
+		MoveVelocity *
+		DeltaTime;
 
+	// 着地
 	if (NewLocation.Z <= GroundZ)
 	{
 		NewLocation.Z =
@@ -159,38 +218,36 @@ void ATDCoinPickup::UpdateAttraction(
 		return;
 	}
 
-	const FVector PlayerLocation =
-		Player->GetActorLocation();
-
 	const FVector CoinLocation =
 		GetActorLocation();
+
+	FVector TargetLocation =
+		Player->GetActorLocation();
+
+	TargetLocation.Z +=
+		50.0f;
 
 	const float Distance =
 		FVector::Distance(
 			CoinLocation,
-			PlayerLocation
+			TargetLocation
 		);
 
+	// 取得
 	if (Distance <= CollectRadius)
 	{
 		CollectCoin();
+
 		return;
 	}
 
+	// 吸引範囲外
 	if (Distance > AttractionRadius)
 	{
 		return;
 	}
 
-	// 吸引中は落下処理を終了
-	bLanded = true;
-
-	FVector TargetLocation =
-		PlayerLocation;
-
-	// プレイヤーの腰くらいへ吸い寄せる
-	TargetLocation.Z += 50.0f;
-
+	// プレイヤーへ吸引
 	const FVector NewLocation =
 		FMath::VInterpConstantTo(
 			CoinLocation,
