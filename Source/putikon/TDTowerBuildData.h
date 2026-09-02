@@ -21,7 +21,15 @@ public:
 	)
 	FText DisplayName;
 
-	// Œš’z‚·‚éActor
+	// UI‚É•\¦‚·‚éà–¾
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadOnly,
+		Category = "Tower"
+	)
+	FText Description;
+
+	// Œš’z‚·‚éƒ^ƒ[
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadOnly,

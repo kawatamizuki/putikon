@@ -5,9 +5,14 @@
 
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "Components/SizeBox.h"
+#include "Components/CanvasPanelSlot.h"
+
+#include "Blueprint/WidgetLayoutLibrary.h"
 
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
 
 #include "Kismet/GameplayStatics.h"
 
@@ -16,6 +21,24 @@ void UTDTowerSelectWidget::NativeConstruct()
 	Super::NativeConstruct();
 
 	FindWidgetReferences();
+}
+
+void UTDTowerSelectWidget::NativeTick(
+	const FGeometry& MyGeometry,
+	float InDeltaTime
+)
+{
+	Super::NativeTick(
+		MyGeometry,
+		InDeltaTime
+	);
+
+	// メニューが開いている間だけ
+	// プレイヤーの横へ追従
+	if (IsValid(CurrentTree))
+	{
+		UpdateMenuPosition();
+	}
 }
 
 void UTDTowerSelectWidget::FindWidgetReferences()
@@ -34,6 +57,13 @@ void UTDTowerSelectWidget::FindWidgetReferences()
 			)
 		);
 
+	TextHelp =
+		Cast<UTextBlock>(
+			GetWidgetFromName(
+				TEXT("Text_Help")
+			)
+		);
+
 	TowerIcon =
 		Cast<UImage>(
 			GetWidgetFromName(
@@ -41,21 +71,19 @@ void UTDTowerSelectWidget::FindWidgetReferences()
 			)
 		);
 
-	if (!TextTowerName)
-	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Text_TowerName was not found.")
+	MenuBox =
+		Cast<USizeBox>(
+			GetWidgetFromName(
+				TEXT("SizeBox_Menu")
+			)
 		);
-	}
 
-	if (!TextCost)
+	if (!MenuBox)
 	{
 		UE_LOG(
 			LogTemp,
 			Warning,
-			TEXT("Text_Cost was not found.")
+			TEXT("SizeBox_Menu was not found.")
 		);
 	}
 }
@@ -78,8 +106,12 @@ void UTDTowerSelectWidget::OpenForTree(
 
 	SelectedIndex = 0;
 
-	// 念のためWidget参照を再取得
-	if (!TextTowerName || !TextCost)
+	if (
+		!TextTowerName ||
+		!TextCost ||
+		!TextHelp ||
+		!MenuBox
+		)
 	{
 		FindWidgetReferences();
 	}
@@ -93,6 +125,9 @@ void UTDTowerSelectWidget::OpenForTree(
 	);
 
 	RefreshDisplay();
+
+	// 開いた瞬間にも位置を更新
+	UpdateMenuPosition();
 }
 
 void UTDTowerSelectWidget::SelectNext()
@@ -158,7 +193,6 @@ bool UTDTowerSelectWidget::ConfirmSelection()
 			SelectedIndex
 		);
 
-	// お金不足などで建設できなかった場合
 	if (!bBuilt)
 	{
 		return false;
@@ -221,10 +255,25 @@ void UTDTowerSelectWidget::RefreshDisplay()
 
 	if (TextCost)
 	{
+		const FText CostText =
+			FText::Format(
+				FText::FromString(
+					TEXT("{0}円")
+				),
+				FText::AsNumber(
+					TowerData->Cost
+				)
+			);
+
 		TextCost->SetText(
-			FText::AsNumber(
-				TowerData->Cost
-			)
+			CostText
+		);
+	}
+
+	if (TextHelp)
+	{
+		TextHelp->SetText(
+			TowerData->Description
 		);
 	}
 
@@ -237,6 +286,85 @@ void UTDTowerSelectWidget::RefreshDisplay()
 			TowerData->Icon
 		);
 	}
+}
+
+void UTDTowerSelectWidget::UpdateMenuPosition()
+{
+	if (!MenuBox)
+	{
+		return;
+	}
+
+	ACharacter* Player =
+		UGameplayStatics::GetPlayerCharacter(
+			GetWorld(),
+			0
+		);
+
+	if (!IsValid(Player))
+	{
+		return;
+	}
+
+	APlayerController* PlayerController =
+		UGameplayStatics::GetPlayerController(
+			GetWorld(),
+			0
+		);
+
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
+
+	// プレイヤーの頭付近を基準にする
+	FVector WorldLocation =
+		Player->GetActorLocation();
+
+	WorldLocation.Z +=
+		100.0f;
+
+	FVector2D ScreenPosition;
+
+	const bool bProjected =
+		UWidgetLayoutLibrary
+		::ProjectWorldLocationToWidgetPosition(
+			PlayerController,
+			WorldLocation,
+			ScreenPosition,
+			false
+		);
+
+	if (!bProjected)
+	{
+		return;
+	}
+
+	// プレイヤーの少し右上へ
+	ScreenPosition +=
+		MenuScreenOffset;
+
+	UCanvasPanelSlot* CanvasSlot =
+		Cast<UCanvasPanelSlot>(
+			MenuBox->Slot
+		);
+
+	if (!CanvasSlot)
+	{
+		return;
+	}
+
+	CanvasSlot->SetPosition(
+		ScreenPosition
+	);
+
+	// 左上を基準に配置
+	CanvasSlot->SetAlignment(
+		FVector2D(
+			0.0f,
+			0.5f
+		)
+	);
 }
 
 void UTDTowerSelectWidget::SetPlayerMovementEnabled(
