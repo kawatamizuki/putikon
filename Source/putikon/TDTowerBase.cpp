@@ -1,6 +1,7 @@
 #include "TDTowerBase.h"
 #include "TDEnemy.h"
 #include "TDProjectile.h"
+#include "TDCannonProjectile.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -311,11 +312,6 @@ void ATDTowerBase::Attack()
 		return;
 	}
 
-	if (!ProjectileClass)
-	{
-		return;
-	}
-
 	UWorld* World =
 		GetWorld();
 
@@ -324,61 +320,180 @@ void ATDTowerBase::Attack()
 		return;
 	}
 
-	// -------------------------
-	// ”­ŽËˆÊ’u
-	// -------------------------
-
-	FVector SpawnLocation =
-		GetActorLocation();
-
-	SpawnLocation.Z +=
-		ProjectileSpawnHeight;
-
-	// -------------------------
-	// ”­ŽË•ûŒü
-	// -------------------------
-
-	FVector Direction =
-		CurrentTarget->GetActorLocation()
-		- SpawnLocation;
-
-	if (Direction.IsNearlyZero())
+	// =========================
+	// ‹|“ƒ
+	// =========================
+	if (AttackType ==
+		ETowerAttackType::Arrow)
 	{
+		if (!ProjectileClass)
+		{
+			return;
+		}
+
+		FVector SpawnLocation =
+			GetActorLocation();
+
+		SpawnLocation.Z +=
+			ProjectileSpawnHeight;
+
+		FVector Direction =
+			CurrentTarget
+			->GetActorLocation()
+			- SpawnLocation;
+
+		if (Direction.IsNearlyZero())
+		{
+			return;
+		}
+
+		Direction.Normalize();
+
+		const FRotator SpawnRotation =
+			Direction.Rotation();
+
+		FActorSpawnParameters
+			SpawnParams;
+
+		SpawnParams
+			.SpawnCollisionHandlingOverride =
+			ESpawnActorCollisionHandlingMethod
+			::AlwaysSpawn;
+
+		ATDProjectile* Projectile =
+			World->SpawnActor<
+			ATDProjectile
+			>(
+				ProjectileClass,
+				SpawnLocation,
+				SpawnRotation,
+				SpawnParams
+			);
+
+		if (!Projectile)
+		{
+			return;
+		}
+
+		Projectile
+			->InitializeProjectile(
+				CurrentTarget,
+				AttackDamage
+			);
+
 		return;
 	}
 
-	Direction.Normalize();
+	// =========================
+	// ‘å–C
+	// =========================
+	if (AttackType ==
+		ETowerAttackType::Cannon)
+	{
+		if (!CannonProjectileClass)
+		{
+			return;
+		}
 
-	const FRotator SpawnRotation =
-		Direction.Rotation();
+		FVector SpawnLocation =
+			GetActorLocation();
 
-	// -------------------------
-	// ’e¶¬
-	// -------------------------
+		SpawnLocation.Z +=
+			ProjectileSpawnHeight;
 
-	FActorSpawnParameters SpawnParams;
+		// š‚±‚ÌuŠÔ‚Ì“G‚ÌˆÊ’u‚ð•Û‘¶
+		FVector ImpactLocation =
+			CurrentTarget
+			->GetActorLocation();
 
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod
-		::AlwaysSpawn;
+		// “G‚Ì‘«Œ³‚ð’T‚·
+		FHitResult HitResult;
 
-	ATDProjectile* Projectile =
-		World->SpawnActor<ATDProjectile>(
-			ProjectileClass,
-			SpawnLocation,
-			SpawnRotation,
-			SpawnParams
+		const FVector TraceStart =
+			ImpactLocation +
+			FVector(
+				0.0f,
+				0.0f,
+				300.0f
+			);
+
+		const FVector TraceEnd =
+			ImpactLocation -
+			FVector(
+				0.0f,
+				0.0f,
+				1000.0f
+			);
+
+		FCollisionQueryParams
+			QueryParams;
+
+		QueryParams.AddIgnoredActor(
+			this
 		);
 
-	if (!Projectile)
-	{
-		return;
-	}
+		QueryParams.AddIgnoredActor(
+			CurrentTarget
+		);
 
-	Projectile->InitializeProjectile(
-		CurrentTarget,
-		AttackDamage
-	);
+		const bool bHit =
+			World
+			->LineTraceSingleByChannel(
+				HitResult,
+				TraceStart,
+				TraceEnd,
+				ECC_Visibility,
+				QueryParams
+			);
+
+		if (bHit)
+		{
+			ImpactLocation =
+				HitResult.Location;
+		}
+
+		FVector Direction =
+			ImpactLocation -
+			SpawnLocation;
+
+		const FRotator SpawnRotation =
+			Direction.Rotation();
+
+		FActorSpawnParameters
+			SpawnParams;
+
+		SpawnParams
+			.SpawnCollisionHandlingOverride =
+			ESpawnActorCollisionHandlingMethod
+			::AlwaysSpawn;
+
+		ATDCannonProjectile*
+			CannonProjectile =
+			World->SpawnActor<
+			ATDCannonProjectile
+			>(
+				CannonProjectileClass,
+				SpawnLocation,
+				SpawnRotation,
+				SpawnParams
+			);
+
+		if (!CannonProjectile)
+		{
+			return;
+		}
+
+		CannonProjectile
+			->InitializeProjectile(
+				ImpactLocation,
+				AttackDamage,
+				CannonProjectileSpeed,
+				CannonArcHeight,
+				CannonExplosionRadius,
+				CannonMinDamagePercent,
+				CannonShockwaveDuration
+			);
+	}
 }
 
 bool ATDTowerBase::IsPlayerTouchingTower() const

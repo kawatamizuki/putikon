@@ -12,11 +12,23 @@ class PUTIKON_API ATDBuildTree : public AActor
 public:
 	ATDBuildTree();
 
-	// この木に建設するタワー
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Build")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Build"
+	)
 	TSubclassOf<AActor> TowerClass;
 
-	// タワーを建設する
-	UFUNCTION(BlueprintCallable, Category = "Build")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Build"
+	)
+	int32 BuildCost = 100;
+
+	UFUNCTION(
+		BlueprintCallable,
+		Category = "Build"
+	)
 	void BuildTower();
 };
