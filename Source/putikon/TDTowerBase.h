@@ -7,6 +7,13 @@
 class USphereComponent;
 class ATDEnemy;
 
+UENUM(BlueprintType)
+enum class ETowerAttackType : uint8
+{
+	Arrow,
+	Cannon
+};
+
 UCLASS()
 class PUTIKON_API ATDTowerBase : public AActor
 {
@@ -33,6 +40,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tower")
 	float Range = 500.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tower")
+	ETowerAttackType AttackType = ETowerAttackType::Arrow;
+
 	UPROPERTY()
 	ATDEnemy* CurrentTarget;
 
@@ -40,8 +50,4 @@ protected:
 
 	void FindTarget();
 	void Attack();
-
-public:
-	UFUNCTION(BlueprintCallable, Category = "Tower")
-	void StartAttack();
 };

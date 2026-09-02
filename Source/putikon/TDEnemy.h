@@ -15,7 +15,11 @@ class PUTIKON_API ATDEnemy : public AActor
 
 public:
 	ATDEnemy();
+	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
+	void ReceiveArrowDamage(float DamageAmount);
 
+	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
+	void ReceiveCannonDamage(float DamageAmount);
 protected:
 	virtual void BeginPlay() override;
 
@@ -45,11 +49,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy Stats")
 	float CannonDamageMultiplier = 1.0f;
 
-	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
-	void ReceiveArrowDamage(float DamageAmount);
-
-	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
-	void ReceiveCannonDamage(float DamageAmount);
+	
 
 private:
 	USplineComponent* PathSpline;

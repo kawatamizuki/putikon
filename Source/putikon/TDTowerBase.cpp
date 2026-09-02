@@ -1,7 +1,7 @@
 #include "TDTowerBase.h"
-#include "Components/SphereComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "TDEnemy.h"
+#include "Components/SphereComponent.h"
+#include "TimerManager.h"
 
 ATDTowerBase::ATDTowerBase()
 {
@@ -15,7 +15,7 @@ ATDTowerBase::ATDTowerBase()
 
 	AttackRange->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	AttackRange->SetCollisionResponseToAllChannels(ECR_Ignore);
-	AttackRange->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	AttackRange->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
 }
 
 void ATDTowerBase::BeginPlay()
@@ -24,11 +24,6 @@ void ATDTowerBase::BeginPlay()
 
 	AttackRange->SetSphereRadius(Range);
 
-	StartAttack();
-}
-
-void ATDTowerBase::StartAttack()
-{
 	GetWorldTimerManager().SetTimer(
 		AttackTimerHandle,
 		this,
@@ -51,9 +46,7 @@ void ATDTowerBase::FindTarget()
 
 	for (AActor* Actor : OverlappingActors)
 	{
-		ATDEnemy* Enemy = Cast<ATDEnemy>(Actor);
-
-		if (Enemy)
+		if (ATDEnemy* Enemy = Cast<ATDEnemy>(Actor))
 		{
 			CurrentTarget = Enemy;
 			break;
@@ -73,5 +66,29 @@ void ATDTowerBase::Attack()
 		return;
 	}
 
-	// ‚±‚±‚ÍŽŸ‚ÉATDEnemy‘¤‚ÌŠù‘¶ƒ_ƒ[ƒWŠÖ”‚ÖÚ‘±‚·‚é
+	// “G‚Ì•ûŒü‚ðŒü‚­
+	FVector Direction =
+		CurrentTarget->GetActorLocation() - GetActorLocation();
+
+	Direction.Z = 0.0f;
+
+	if (!Direction.IsNearlyZero())
+	{
+		const FRotator LookRotation = Direction.Rotation();
+		SetActorRotation(LookRotation);
+	}
+
+	// UŒ‚
+	switch (AttackType)
+	{
+	case ETowerAttackType::Arrow:
+		CurrentTarget->ReceiveArrowDamage(AttackDamage);
+		break;
+
+	case ETowerAttackType::Cannon:
+		CurrentTarget->ReceiveCannonDamage(AttackDamage);
+		break;
+	}
+
+	FindTarget();
 }
