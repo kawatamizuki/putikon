@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -15,11 +14,19 @@ class PUTIKON_API ATDEnemy : public AActor
 
 public:
 	ATDEnemy();
+
 	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
 	void ReceiveArrowDamage(float DamageAmount);
 
 	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
 	void ReceiveCannonDamage(float DamageAmount);
+
+	// SplineÇÇ«Ç±Ç‹Ç≈êiÇÒÇ≈Ç¢ÇÈÇ©éÊìæ
+	float GetDistanceAlongSpline() const
+	{
+		return DistanceAlongSpline;
+	}
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -48,8 +55,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy Stats")
 	float CannonDamageMultiplier = 1.0f;
-
-	
 
 private:
 	USplineComponent* PathSpline;
