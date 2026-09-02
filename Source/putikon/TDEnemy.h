@@ -6,6 +6,7 @@
 
 class UStaticMeshComponent;
 class USplineComponent;
+class ATDCoinPickup;
 
 UCLASS()
 class PUTIKON_API ATDEnemy : public AActor
@@ -21,7 +22,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
 	void ReceiveCannonDamage(float DamageAmount);
 
-	// Splineをどこまで進んでいるか取得
 	float GetDistanceAlongSpline() const
 	{
 		return DistanceAlongSpline;
@@ -30,7 +30,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	UPROPERTY(
+		VisibleAnywhere,
+		BlueprintReadOnly,
+		Category = "Enemy"
+	)
 	UStaticMeshComponent* EnemyMesh;
 
 	UPROPERTY(
@@ -41,25 +45,75 @@ protected:
 	)
 	AActor* PathActor;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Movement"
+	)
 	float MoveSpeed = 200.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy Stats")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Enemy Stats"
+	)
 	float MaxHealth = 100.0f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy Stats")
+	UPROPERTY(
+		VisibleAnywhere,
+		BlueprintReadOnly,
+		Category = "Enemy Stats"
+	)
 	float CurrentHealth = 100.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy Stats")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Enemy Stats"
+	)
 	float ArrowDamageMultiplier = 1.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy Stats")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Enemy Stats"
+	)
 	float CannonDamageMultiplier = 1.0f;
+
+	// 落とすコイン
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Reward"
+	)
+	TSubclassOf<ATDCoinPickup> CoinClass;
+
+	// 基本ドロップ枚数
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Reward"
+	)
+	int32 BaseMoneyReward = 10;
+
+	// 基本値から±何枚するか
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Reward"
+	)
+	int32 MoneyRandomRange = 3;
 
 private:
 	USplineComponent* PathSpline;
 
 	float DistanceAlongSpline = 0.0f;
+
+	bool bDead = false;
+
+	void Die();
+
+	void DropCoins();
 
 public:
 	virtual void Tick(float DeltaTime) override;

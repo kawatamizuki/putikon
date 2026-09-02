@@ -1,16 +1,20 @@
-#include "TDBase.h"
-#include "Kismet/GameplayStatics.h"
 #include "TDEnemy.h"
-#include "Components/StaticMeshComponent.h"
-#include "Components/SplineComponent.h"
 
+#include "TDBase.h"
+#include "TDCoinPickup.h"
+
+#include "Components/SplineComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 ATDEnemy::ATDEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
 	EnemyMesh =
-		CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EnemyMesh"));
+		CreateDefaultSubobject<UStaticMeshComponent>(
+			TEXT("EnemyMesh")
+		);
 
 	RootComponent = EnemyMesh;
 
@@ -21,93 +25,222 @@ ATDEnemy::ATDEnemy()
 void ATDEnemy::BeginPlay()
 {
 	Super::BeginPlay();
-	CurrentHealth = MaxHealth;
+
+	CurrentHealth =
+		MaxHealth;
+
 	if (PathActor)
 	{
 		PathSpline =
-			PathActor->FindComponentByClass<USplineComponent>();
+			PathActor->FindComponentByClass<
+			USplineComponent
+			>();
 
 		if (PathSpline)
 		{
 			const FVector StartLocation =
-				PathSpline->GetLocationAtDistanceAlongSpline(
+				PathSpline
+				->GetLocationAtDistanceAlongSpline(
 					0.0f,
 					ESplineCoordinateSpace::World
 				);
 
-			SetActorLocation(StartLocation);
+			SetActorLocation(
+				StartLocation
+			);
 		}
 	}
 }
 
-void ATDEnemy::ReceiveArrowDamage(float DamageAmount)
+void ATDEnemy::ReceiveArrowDamage(
+	float DamageAmount
+)
 {
-	const float FinalDamage =
-		DamageAmount * ArrowDamageMultiplier;
+	if (bDead)
+	{
+		return;
+	}
 
-	CurrentHealth -= FinalDamage;
+	const float FinalDamage =
+		DamageAmount *
+		ArrowDamageMultiplier;
+
+	CurrentHealth -=
+		FinalDamage;
 
 	if (CurrentHealth <= 0.0f)
 	{
-		Destroy();
+		Die();
 	}
 }
 
-void ATDEnemy::ReceiveCannonDamage(float DamageAmount)
+void ATDEnemy::ReceiveCannonDamage(
+	float DamageAmount
+)
 {
-	const float FinalDamage =
-		DamageAmount * CannonDamageMultiplier;
+	if (bDead)
+	{
+		return;
+	}
 
-	CurrentHealth -= FinalDamage;
+	const float FinalDamage =
+		DamageAmount *
+		CannonDamageMultiplier;
+
+	CurrentHealth -=
+		FinalDamage;
 
 	if (CurrentHealth <= 0.0f)
 	{
-		Destroy();
+		Die();
 	}
 }
 
-void ATDEnemy::Tick(float DeltaTime)
+void ATDEnemy::Die()
 {
-	Super::Tick(DeltaTime);
+	if (bDead)
+	{
+		return;
+	}
+
+	bDead = true;
+
+	DropCoins();
+
+	Destroy();
+}
+
+void ATDEnemy::DropCoins()
+{
+	if (!CoinClass)
+	{
+		return;
+	}
+
+	UWorld* World =
+		GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	const int32 RandomOffset =
+		FMath::RandRange(
+			-MoneyRandomRange,
+			MoneyRandomRange
+		);
+
+	const int32 CoinCount =
+		FMath::Max(
+			BaseMoneyReward +
+			RandomOffset,
+			0
+		);
+
+	const FVector EnemyLocation =
+		GetActorLocation();
+
+	for (int32 i = 0; i < CoinCount; ++i)
+	{
+		FVector SpawnLocation =
+			EnemyLocation;
+
+		// 少しだけ位置をばらけさせる
+		SpawnLocation.X += FMath::FRandRange(-35.0f, 35.0f);
+		SpawnLocation.Y += FMath::FRandRange(-35.0f, 35.0f);
+
+		SpawnLocation.Z +=
+			FMath::FRandRange(
+				20.0f,
+				50.0f
+			);
+
+		FActorSpawnParameters SpawnParams;
+
+		SpawnParams
+			.SpawnCollisionHandlingOverride =
+			ESpawnActorCollisionHandlingMethod
+			::AlwaysSpawn;
+
+		World->SpawnActor<ATDCoinPickup>(
+			CoinClass,
+			SpawnLocation,
+			FRotator::ZeroRotator,
+			SpawnParams
+		);
+	}
+}
+
+void ATDEnemy::Tick(
+	float DeltaTime
+)
+{
+	Super::Tick(
+		DeltaTime
+	);
 
 	if (!PathSpline)
 	{
 		return;
 	}
 
-	DistanceAlongSpline += MoveSpeed * DeltaTime;
-
-	const float SplineLength = PathSpline->GetSplineLength();
-
-	if (DistanceAlongSpline >= SplineLength)
+	if (bDead)
 	{
-		AActor* BaseActor = UGameplayStatics::GetActorOfClass(
-			GetWorld(),
-			ATDBase::StaticClass()
-		);
+		return;
+	}
 
-		ATDBase* Base = Cast<ATDBase>(BaseActor);
+	DistanceAlongSpline +=
+		MoveSpeed *
+		DeltaTime;
+
+	const float SplineLength =
+		PathSpline->GetSplineLength();
+
+	if (
+		DistanceAlongSpline >=
+		SplineLength
+		)
+	{
+		AActor* BaseActor =
+			UGameplayStatics
+			::GetActorOfClass(
+				GetWorld(),
+				ATDBase::StaticClass()
+			);
+
+		ATDBase* Base =
+			Cast<ATDBase>(
+				BaseActor
+			);
 
 		if (Base)
 		{
 			Base->EnemyReachedGoal();
 		}
 
+		// ゴール到達ではコインを落とさない
 		Destroy();
+
 		return;
 	}
 
 	const FVector NewLocation =
-		PathSpline->GetLocationAtDistanceAlongSpline(
+		PathSpline
+		->GetLocationAtDistanceAlongSpline(
 			DistanceAlongSpline,
 			ESplineCoordinateSpace::World
 		);
 
 	const FRotator NewRotation =
-		PathSpline->GetRotationAtDistanceAlongSpline(
+		PathSpline
+		->GetRotationAtDistanceAlongSpline(
 			DistanceAlongSpline,
 			ESplineCoordinateSpace::World
 		);
 
-	SetActorLocationAndRotation(NewLocation, NewRotation);
+	SetActorLocationAndRotation(
+		NewLocation,
+		NewRotation
+	);
 }
