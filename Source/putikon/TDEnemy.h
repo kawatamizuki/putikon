@@ -8,13 +8,6 @@ class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class USplineComponent;
 
-UENUM(BlueprintType)
-enum class ETDEnemySpawnMode : uint8
-{
-	Single UMETA(DisplayName = "Single"),
-	Crowd UMETA(DisplayName = "Crowd")
-};
-
 UCLASS()
 class PUTIKON_API ATDEnemy : public AActor
 {
@@ -23,11 +16,29 @@ class PUTIKON_API ATDEnemy : public AActor
 public:
 	ATDEnemy();
 
-	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
+	UFUNCTION(
+		BlueprintCallable,
+		Category = "Enemy Stats"
+	)
 	void ReceiveArrowDamage(float DamageAmount);
 
-	UFUNCTION(BlueprintCallable, Category = "Enemy Stats")
+	UFUNCTION(
+		BlueprintCallable,
+		Category = "Enemy Stats"
+	)
 	void ReceiveCannonDamage(float DamageAmount);
+
+	// WaveSpawnerからSpawn直後に呼ぶ
+	// bUseCrowdSpawn = false なら今まで通り
+	// trueなら1～4体のグループにする
+	UFUNCTION(
+		BlueprintCallable,
+		Category = "Spawn Formation"
+	)
+	void ConfigureSpawnFormation(
+		bool bUseCrowdSpawn,
+		int32 InColumnCount
+	);
 
 	float GetDistanceAlongSpline() const
 	{
@@ -38,6 +49,10 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	// =========================
+	// Components
+	// =========================
 
 	UPROPERTY(
 		VisibleAnywhere,
@@ -71,55 +86,6 @@ protected:
 		Category = "Movement"
 	)
 	float FacingYawOffset = 0.0f;
-
-	// =========================
-	// Spawn Formation
-	// =========================
-
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadWrite,
-		Category = "Spawn Formation"
-	)
-	ETDEnemySpawnMode SpawnMode =
-		ETDEnemySpawnMode::Single;
-
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadWrite,
-		Category = "Spawn Formation",
-		meta = (
-			ClampMin = "1",
-			ClampMax = "4",
-			UIMin = "1",
-			UIMax = "4"
-			)
-	)
-	int32 ColumnCount = 4;
-
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadWrite,
-		Category = "Spawn Formation",
-		meta = (ClampMin = "0.0")
-	)
-	float ColumnSpacing = 110.0f;
-
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadWrite,
-		Category = "Spawn Formation",
-		meta = (ClampMin = "0.0")
-	)
-	float SideRandomness = 25.0f;
-
-	UPROPERTY(
-		EditAnywhere,
-		BlueprintReadWrite,
-		Category = "Spawn Formation",
-		meta = (ClampMin = "0.0")
-	)
-	float ForwardRandomness = 80.0f;
 
 	// =========================
 	// Animation
@@ -210,6 +176,10 @@ protected:
 	)
 	int32 MoneyRandomRange = 3;
 
+	// =========================
+	// Audio
+	// =========================
+
 	UFUNCTION(
 		BlueprintImplementableEvent,
 		Category = "Audio"
@@ -217,6 +187,7 @@ protected:
 	void OnEnemyDefeated();
 
 private:
+
 	USplineComponent* PathSpline = nullptr;
 
 	USkeletalMeshComponent* VisualSkeletalMesh = nullptr;
@@ -233,24 +204,41 @@ private:
 
 	bool bDead = false;
 
-	// Crowdによって複製された敵か
-	bool bIsCrowdMember = false;
+	// Formationを二重生成しないため
+	bool bFormationConfigured = false;
 
-	// Spline中心から横へずらす量
+	// Spline中央からの横方向Offset
 	float PathSideOffset = 0.0f;
+
+	// =========================
+	// Crowd設定
+	// =========================
+
+	// 敵同士の基本横間隔
+	float CrowdColumnSpacing = 110.0f;
+
+	// 横方向のランダム幅
+	float CrowdSideRandomness = 25.0f;
+
+	// 前後方向のランダム幅
+	float CrowdForwardRandomness = 80.0f;
+
+	// =========================
+	// Internal Functions
+	// =========================
 
 	void Die();
 
 	void DropCoins();
 
-	void UpdateVisualAnimation(float DeltaTime);
+	void UpdateVisualAnimation(
+		float DeltaTime
+	);
 
-	void SetupCrowdFormation();
+	void UpdateLocationOnSpline();
 
 	void SpawnCrowdMember(
 		float SideOffset,
 		float ForwardOffset
 	);
-
-	void UpdateLocationOnSpline();
 };

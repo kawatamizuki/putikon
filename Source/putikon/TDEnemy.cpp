@@ -9,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 
+
 ATDEnemy::ATDEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -24,12 +25,18 @@ ATDEnemy::ATDEnemy()
 	PathSpline = nullptr;
 }
 
+
+// ========================================
+// BeginPlay
+// ========================================
+
 void ATDEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 
 	CurrentHealth = MaxHealth;
 
+	// BPで追加したSkeletalMeshを探す
 	VisualSkeletalMesh =
 		FindComponentByClass<USkeletalMeshComponent>();
 
@@ -42,10 +49,63 @@ void ATDEnemy::BeginPlay()
 			VisualSkeletalMesh->GetRelativeRotation();
 	}
 
+	// PathActorからSpline取得
 	if (PathActor)
 	{
 		PathSpline =
 			PathActor->FindComponentByClass<USplineComponent>();
+	}
+
+	if (PathSpline)
+	{
+		UpdateLocationOnSpline();
+	}
+}
+
+
+// ========================================
+// Spawn Formation
+// ========================================
+
+void ATDEnemy::ConfigureSpawnFormation(
+	bool bUseCrowdSpawn,
+	int32 InColumnCount
+)
+{
+	// 二重実行防止
+	if (bFormationConfigured)
+	{
+		return;
+	}
+
+	bFormationConfigured = true;
+
+	// Singleなら何もしない
+	if (!bUseCrowdSpawn)
+	{
+		return;
+	}
+
+	const int32 ColumnCount =
+		FMath::Clamp(
+			InColumnCount,
+			1,
+			4
+		);
+
+	// 1ならSingleと同じ
+	if (ColumnCount <= 1)
+	{
+		return;
+	}
+
+	if (!PathSpline)
+	{
+		if (PathActor)
+		{
+			PathSpline =
+				PathActor->FindComponentByClass<USplineComponent>();
+		}
 	}
 
 	if (!PathSpline)
@@ -53,83 +113,98 @@ void ATDEnemy::BeginPlay()
 		return;
 	}
 
-	// 親だけがCrowdメンバーを増やす
-	if (
-		SpawnMode == ETDEnemySpawnMode::Crowd &&
-		!bIsCrowdMember &&
-		ColumnCount > 1
-		)
-	{
-		SetupCrowdFormation();
-	}
-
-	UpdateLocationOnSpline();
-}
-
-void ATDEnemy::SetupCrowdFormation()
-{
-	const int32 ActualColumnCount =
-		FMath::Clamp(
-			ColumnCount,
-			1,
-			4
-		);
+	// ========================================
+	// 横位置を中央基準にする
+	//
+	// 2体:
+	// -0.5  +0.5
+	//
+	// 3体:
+	// -1    0    +1
+	//
+	// 4体:
+	// -1.5 -0.5 +0.5 +1.5
+	// ========================================
 
 	const float CenterIndex =
-		(static_cast<float>(ActualColumnCount) - 1.0f)
+		(
+			static_cast<float>(ColumnCount)
+			- 1.0f
+			)
 		* 0.5f;
 
-	// 元々Spawnされた敵を1人目として使う
-	const float FirstBaseOffset =
-		(0.0f - CenterIndex)
-		* ColumnSpacing;
+	// ========================================
+	// 元々Spawnされた敵を
+	// 1人目として利用
+	// ========================================
+
+	const float FirstBaseSideOffset =
+		(
+			0.0f
+			- CenterIndex
+			)
+		* CrowdColumnSpacing;
 
 	PathSideOffset =
-		FirstBaseOffset +
+		FirstBaseSideOffset +
 		FMath::FRandRange(
-			-SideRandomness,
-			SideRandomness
+			-CrowdSideRandomness,
+			CrowdSideRandomness
 		);
 
-	DistanceAlongSpline =
+	// 前後に少しズラして
+	// 完全な横一列にしない
+	DistanceAlongSpline +=
 		FMath::FRandRange(
 			0.0f,
-			ForwardRandomness
+			CrowdForwardRandomness
 		);
 
-	// 残りを同時に生成
+	UpdateLocationOnSpline();
+
+	// ========================================
+	// 残りの敵を同時Spawn
+	// ========================================
+
 	for (
 		int32 ColumnIndex = 1;
-		ColumnIndex < ActualColumnCount;
+		ColumnIndex < ColumnCount;
 		++ColumnIndex
 		)
 	{
 		const float BaseSideOffset =
 			(
-				static_cast<float>(ColumnIndex)
+				static_cast<float>(
+					ColumnIndex
+					)
 				- CenterIndex
 				)
-			* ColumnSpacing;
+			* CrowdColumnSpacing;
 
-		const float SideOffset =
+		const float FinalSideOffset =
 			BaseSideOffset +
 			FMath::FRandRange(
-				-SideRandomness,
-				SideRandomness
+				-CrowdSideRandomness,
+				CrowdSideRandomness
 			);
 
 		const float ForwardOffset =
 			FMath::FRandRange(
 				0.0f,
-				ForwardRandomness
+				CrowdForwardRandomness
 			);
 
 		SpawnCrowdMember(
-			SideOffset,
+			FinalSideOffset,
 			ForwardOffset
 		);
 	}
 }
+
+
+// ========================================
+// Crowd Member Spawn
+// ========================================
 
 void ATDEnemy::SpawnCrowdMember(
 	float SideOffset,
@@ -143,18 +218,22 @@ void ATDEnemy::SpawnCrowdMember(
 		return;
 	}
 
-	FActorSpawnParameters SpawnParams;
+	// 親の位置・回転を使う
+	FTransform SpawnTransform = GetActorTransform();
 
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	SpawnParams.bDeferConstruction = true;
+	// Spawn時はいったんScaleを1にする
+	// BP側の見た目Scaleが二重に影響するのを防ぐ
+	SpawnTransform.SetScale3D(
+		FVector::OneVector
+	);
 
 	ATDEnemy* NewEnemy =
-		World->SpawnActor<ATDEnemy>(
+		World->SpawnActorDeferred<ATDEnemy>(
 			GetClass(),
-			GetActorTransform(),
-			SpawnParams
+			SpawnTransform,
+			nullptr,
+			nullptr,
+			ESpawnActorCollisionHandlingMethod::AlwaysSpawn
 		);
 
 	if (!NewEnemy)
@@ -165,19 +244,31 @@ void ATDEnemy::SpawnCrowdMember(
 	NewEnemy->PathActor =
 		PathActor;
 
-	NewEnemy->bIsCrowdMember =
-		true;
-
 	NewEnemy->PathSideOffset =
 		SideOffset;
 
 	NewEnemy->DistanceAlongSpline =
+		DistanceAlongSpline +
 		ForwardOffset;
 
-	NewEnemy->FinishSpawning(
-		GetActorTransform()
+	NewEnemy->bFormationConfigured =
+		true;
+
+	UGameplayStatics::FinishSpawningActor(
+		NewEnemy,
+		SpawnTransform
+	);
+
+	// 最後に親と同じActor Scaleにする
+	NewEnemy->SetActorScale3D(
+		GetActorScale3D()
 	);
 }
+
+
+// ========================================
+// Arrow Damage
+// ========================================
 
 void ATDEnemy::ReceiveArrowDamage(
 	float DamageAmount
@@ -192,13 +283,19 @@ void ATDEnemy::ReceiveArrowDamage(
 		DamageAmount *
 		ArrowDamageMultiplier;
 
-	CurrentHealth -= FinalDamage;
+	CurrentHealth -=
+		FinalDamage;
 
 	if (CurrentHealth <= 0.0f)
 	{
 		Die();
 	}
 }
+
+
+// ========================================
+// Cannon Damage
+// ========================================
 
 void ATDEnemy::ReceiveCannonDamage(
 	float DamageAmount
@@ -213,13 +310,19 @@ void ATDEnemy::ReceiveCannonDamage(
 		DamageAmount *
 		CannonDamageMultiplier;
 
-	CurrentHealth -= FinalDamage;
+	CurrentHealth -=
+		FinalDamage;
 
 	if (CurrentHealth <= 0.0f)
 	{
 		Die();
 	}
 }
+
+
+// ========================================
+// Die
+// ========================================
 
 void ATDEnemy::Die()
 {
@@ -230,12 +333,18 @@ void ATDEnemy::Die()
 
 	bDead = true;
 
+	// 敵撃破音
 	OnEnemyDefeated();
 
 	DropCoins();
 
 	Destroy();
 }
+
+
+// ========================================
+// Drop Coins
+// ========================================
 
 void ATDEnemy::DropCoins()
 {
@@ -259,7 +368,8 @@ void ATDEnemy::DropCoins()
 
 	const int32 CoinCount =
 		FMath::Max(
-			BaseMoneyReward + RandomOffset,
+			BaseMoneyReward +
+			RandomOffset,
 			0
 		);
 
@@ -309,6 +419,11 @@ void ATDEnemy::DropCoins()
 	}
 }
 
+
+// ========================================
+// Visual Animation
+// ========================================
+
 void ATDEnemy::UpdateVisualAnimation(
 	float DeltaTime
 )
@@ -322,7 +437,8 @@ void ATDEnemy::UpdateVisualAnimation(
 
 	const float BobOffset =
 		FMath::Sin(
-			AnimationTime * BobSpeed
+			AnimationTime *
+			BobSpeed
 		)
 		* BobHeight;
 
@@ -338,7 +454,8 @@ void ATDEnemy::UpdateVisualAnimation(
 
 	const float Sway =
 		FMath::Sin(
-			AnimationTime * SwaySpeed
+			AnimationTime *
+			SwaySpeed
 		)
 		* SwayAngle;
 
@@ -352,6 +469,11 @@ void ATDEnemy::UpdateVisualAnimation(
 		NewRelativeRotation
 	);
 }
+
+
+// ========================================
+// Spline位置更新
+// ========================================
 
 void ATDEnemy::UpdateLocationOnSpline()
 {
@@ -370,40 +492,51 @@ void ATDEnemy::UpdateLocationOnSpline()
 			SplineLength
 		);
 
+	// Spline中心
 	const FVector CenterLocation =
 		PathSpline->GetLocationAtDistanceAlongSpline(
 			SafeDistance,
 			ESplineCoordinateSpace::World
 		);
 
+	// Spline横方向
 	const FVector RightVector =
 		PathSpline->GetRightVectorAtDistanceAlongSpline(
 			SafeDistance,
 			ESplineCoordinateSpace::World
 		);
 
+	// 進行方向
 	const FVector MoveDirection =
 		PathSpline->GetDirectionAtDistanceAlongSpline(
 			SafeDistance,
 			ESplineCoordinateSpace::World
 		);
 
+	// 横Offsetを追加
 	const FVector NewLocation =
 		CenterLocation +
-		RightVector * PathSideOffset;
+		RightVector *
+		PathSideOffset;
 
 	FRotator NewRotation =
 		MoveDirection.Rotation();
 
 	NewRotation.Pitch = 0.0f;
 	NewRotation.Roll = 0.0f;
-	NewRotation.Yaw += FacingYawOffset;
+	NewRotation.Yaw +=
+		FacingYawOffset;
 
 	SetActorLocationAndRotation(
 		NewLocation,
 		NewRotation
 	);
 }
+
+
+// ========================================
+// Tick
+// ========================================
 
 void ATDEnemy::Tick(
 	float DeltaTime
@@ -422,10 +555,15 @@ void ATDEnemy::Tick(
 	}
 
 	DistanceAlongSpline +=
-		MoveSpeed * DeltaTime;
+		MoveSpeed *
+		DeltaTime;
 
 	const float SplineLength =
 		PathSpline->GetSplineLength();
+
+	// ========================================
+	// Goal
+	// ========================================
 
 	if (
 		DistanceAlongSpline >=
@@ -453,8 +591,10 @@ void ATDEnemy::Tick(
 		return;
 	}
 
+	// Spline移動
 	UpdateLocationOnSpline();
 
+	// 見た目
 	UpdateVisualAnimation(
 		DeltaTime
 	);
