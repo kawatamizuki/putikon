@@ -98,6 +98,13 @@ protected:
 	)
 	float RotationSpeed = 120.0f;
 
+	// ƒRƒCƒ“æ“¾¬Œ÷
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Audio"
+	)
+	void OnCoinCollected();
+
 private:
 	FVector MoveVelocity = FVector::ZeroVector;
 

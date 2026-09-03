@@ -181,6 +181,8 @@ bool ATDBuildTree::BuildTowerByIndex(
 	}
 
 	// Œšİ¬Œ÷
+	OnTowerBuilt();
+
 	Destroy();
 
 	return true;

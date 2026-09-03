@@ -394,6 +394,9 @@ void ATDTowerBase::Attack()
 			return;
 		}
 
+		// ‹|”­ŽË¬Œ÷
+		OnArrowFired();
+
 		Projectile
 			->InitializeProjectile(
 				CurrentTarget,
@@ -420,7 +423,7 @@ void ATDTowerBase::Attack()
 		SpawnLocation.Z +=
 			ProjectileSpawnHeight;
 
-		// š‚±‚ÌuŠÔ‚Ì“G‚ÌˆÊ’u‚ð•Û‘¶
+		// ‚±‚ÌuŠÔ‚Ì“G‚ÌˆÊ’u‚ð•Û‘¶
 		FVector ImpactLocation =
 			CurrentTarget
 			->GetActorLocation();
@@ -501,6 +504,9 @@ void ATDTowerBase::Attack()
 		{
 			return;
 		}
+
+		// ‘å–C”­ŽË¬Œ÷
+		OnCannonFired();
 
 		CannonProjectile
 			->InitializeProjectile(

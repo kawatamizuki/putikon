@@ -25,14 +25,33 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(
+		VisibleAnywhere,
+		BlueprintReadOnly,
+		Category = "Projectile"
+	)
 	UStaticMeshComponent* ProjectileMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Projectile"
+	)
 	float MoveSpeed = 1000.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Projectile")
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Projectile"
+	)
 	float HitDistance = 30.0f;
+
+	// ñÓÇ™ìGÇ÷ñΩíÜÇµÇΩèuä‘
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Audio"
+	)
+	void OnArrowHit();
 
 private:
 	UPROPERTY()

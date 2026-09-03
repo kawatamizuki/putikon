@@ -36,6 +36,13 @@ protected:
 	)
 	UStaticMeshComponent* ProjectileMesh;
 
+	// ‘å–C’…’eŽž
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Audio"
+	)
+	void OnCannonImpact();
+
 private:
 	FVector StartLocation;
 	FVector DestinationLocation;
@@ -63,5 +70,8 @@ private:
 	bool bExploded = false;
 
 	void Explode();
-	void UpdateShockwave(float DeltaTime);
+
+	void UpdateShockwave(
+		float DeltaTime
+	);
 };

@@ -99,6 +99,13 @@ protected:
 	)
 	TSubclassOf<ATDProjectile> ProjectileClass;
 
+	// ‹|”­Ë¬Œ÷
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Audio"
+	)
+	void OnArrowFired();
+
 	// =========================
 	// Cannon
 	// =========================
@@ -145,6 +152,13 @@ protected:
 		Category = "Cannon"
 	)
 	float CannonShockwaveDuration = 0.35f;
+
+	// ‘å–C”­Ë¬Œ÷
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Audio"
+	)
+	void OnCannonFired();
 
 	// =========================
 	// Projectile Spawn

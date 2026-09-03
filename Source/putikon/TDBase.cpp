@@ -1,4 +1,5 @@
 #include "TDBase.h"
+
 #include "Components/StaticMeshComponent.h"
 
 ATDBase::ATDBase()
@@ -6,7 +7,9 @@ ATDBase::ATDBase()
 	PrimaryActorTick.bCanEverTick = false;
 
 	BaseMesh =
-		CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BaseMesh"));
+		CreateDefaultSubobject<UStaticMeshComponent>(
+			TEXT("BaseMesh")
+		);
 
 	RootComponent = BaseMesh;
 }
@@ -14,7 +17,6 @@ ATDBase::ATDBase()
 void ATDBase::BeginPlay()
 {
 	Super::BeginPlay();
-
 }
 
 void ATDBase::EnemyReachedGoal()
@@ -26,7 +28,12 @@ void ATDBase::EnemyReachedGoal()
 
 	RemainingChildren--;
 
-	OnChildrenChanged(RemainingChildren);
+	// ‹’“_‚Ö“G‚ª“ž’B‚µ‚½‰¹
+	OnBaseDamaged();
+
+	OnChildrenChanged(
+		RemainingChildren
+	);
 
 	UE_LOG(
 		LogTemp,

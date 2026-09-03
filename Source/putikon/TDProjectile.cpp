@@ -114,6 +114,9 @@ void ATDProjectile::Tick(
 			Damage
 		);
 
+		// 命中音用イベント
+		OnArrowHit();
+
 		Destroy();
 		return;
 	}

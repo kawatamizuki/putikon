@@ -42,4 +42,11 @@ public:
 		Category = "Build"
 	)
 	UTDTowerBuildData* GetTowerOption(int32 Index) const;
+
+	// Œš’z¬Œ÷‚ÉBlueprint‘¤‚ÅŒÄ‚Î‚ê‚é
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Build"
+	)
+	void OnTowerBuilt();
 };

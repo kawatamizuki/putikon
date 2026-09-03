@@ -182,6 +182,9 @@ void ATDCannonProjectile::Explode()
 
 	bExploded = true;
 
+	// ’…’e‰¹—pƒCƒxƒ“ƒg
+	OnCannonImpact();
+
 	// –C’e‚ðÁ‚·
 	if (ProjectileMesh)
 	{
@@ -317,8 +320,10 @@ void ATDCannonProjectile::UpdateShockwave(
 		false
 	);
 
-	if (ShockwaveElapsedTime >=
-		ShockwaveDuration)
+	if (
+		ShockwaveElapsedTime >=
+		ShockwaveDuration
+		)
 	{
 		Destroy();
 	}

@@ -288,5 +288,8 @@ void ATDCoinPickup::CollectCoin()
 		MoneyValue
 	);
 
+	// ƒRƒCƒ“æ“¾¬Œ÷
+	OnCoinCollected();
+
 	Destroy();
 }
