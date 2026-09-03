@@ -8,6 +8,13 @@ class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class USplineComponent;
 
+UENUM(BlueprintType)
+enum class ETDEnemySpawnMode : uint8
+{
+	Single UMETA(DisplayName = "Single"),
+	Crowd UMETA(DisplayName = "Crowd")
+};
+
 UCLASS()
 class PUTIKON_API ATDEnemy : public AActor
 {
@@ -39,6 +46,10 @@ protected:
 	)
 	UStaticMeshComponent* EnemyMesh;
 
+	// =========================
+	// Movement
+	// =========================
+
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -54,7 +65,6 @@ protected:
 	)
 	float MoveSpeed = 200.0f;
 
-	// ÉSÉuÉäÉìÉÇÉfÉãÇÃê≥ñ ï˚å¸ï‚ê≥
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -62,7 +72,59 @@ protected:
 	)
 	float FacingYawOffset = 0.0f;
 
-	// è„â∫Ç…óhÇÍÇÈçÇÇ≥
+	// =========================
+	// Spawn Formation
+	// =========================
+
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Spawn Formation"
+	)
+	ETDEnemySpawnMode SpawnMode =
+		ETDEnemySpawnMode::Single;
+
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Spawn Formation",
+		meta = (
+			ClampMin = "1",
+			ClampMax = "4",
+			UIMin = "1",
+			UIMax = "4"
+			)
+	)
+	int32 ColumnCount = 4;
+
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Spawn Formation",
+		meta = (ClampMin = "0.0")
+	)
+	float ColumnSpacing = 110.0f;
+
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Spawn Formation",
+		meta = (ClampMin = "0.0")
+	)
+	float SideRandomness = 25.0f;
+
+	UPROPERTY(
+		EditAnywhere,
+		BlueprintReadWrite,
+		Category = "Spawn Formation",
+		meta = (ClampMin = "0.0")
+	)
+	float ForwardRandomness = 80.0f;
+
+	// =========================
+	// Animation
+	// =========================
+
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -70,7 +132,6 @@ protected:
 	)
 	float BobHeight = 8.0f;
 
-	// è„â∫óhÇÍÇÃë¨Ç≥
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -78,7 +139,6 @@ protected:
 	)
 	float BobSpeed = 7.0f;
 
-	// ç∂âEÇ…åXÇ≠äpìx
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -86,13 +146,16 @@ protected:
 	)
 	float SwayAngle = 8.0f;
 
-	// ç∂âEÇ…åXÇ≠ë¨Ç≥
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
 		Category = "Animation"
 	)
 	float SwaySpeed = 7.0f;
+
+	// =========================
+	// Enemy Stats
+	// =========================
 
 	UPROPERTY(
 		EditAnywhere,
@@ -122,6 +185,10 @@ protected:
 	)
 	float CannonDamageMultiplier = 1.0f;
 
+	// =========================
+	// Reward
+	// =========================
+
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -143,21 +210,47 @@ protected:
 	)
 	int32 MoneyRandomRange = 3;
 
+	UFUNCTION(
+		BlueprintImplementableEvent,
+		Category = "Audio"
+	)
+	void OnEnemyDefeated();
+
 private:
 	USplineComponent* PathSpline = nullptr;
 
-	// BPÇ≈í«â¡ÇµÇΩÉSÉuÉäÉìÇÃSkeletalMesh
 	USkeletalMeshComponent* VisualSkeletalMesh = nullptr;
 
-	FVector InitialMeshRelativeLocation = FVector::ZeroVector;
-	FRotator InitialMeshRelativeRotation = FRotator::ZeroRotator;
+	FVector InitialMeshRelativeLocation =
+		FVector::ZeroVector;
+
+	FRotator InitialMeshRelativeRotation =
+		FRotator::ZeroRotator;
 
 	float DistanceAlongSpline = 0.0f;
+
 	float AnimationTime = 0.0f;
 
 	bool bDead = false;
 
+	// CrowdÇ…ÇÊÇ¡Çƒï°êªÇ≥ÇÍÇΩìGÇ©
+	bool bIsCrowdMember = false;
+
+	// SplineíÜêSÇ©ÇÁâ°Ç÷Ç∏ÇÁÇ∑ó 
+	float PathSideOffset = 0.0f;
+
 	void Die();
+
 	void DropCoins();
+
 	void UpdateVisualAnimation(float DeltaTime);
+
+	void SetupCrowdFormation();
+
+	void SpawnCrowdMember(
+		float SideOffset,
+		float ForwardOffset
+	);
+
+	void UpdateLocationOnSpline();
 };

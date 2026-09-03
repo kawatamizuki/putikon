@@ -5,7 +5,9 @@
 #include "Components/SplineComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+
 #include "Kismet/GameplayStatics.h"
+#include "Engine/World.h"
 
 ATDEnemy::ATDEnemy()
 {
@@ -28,7 +30,6 @@ void ATDEnemy::BeginPlay()
 
 	CurrentHealth = MaxHealth;
 
-	// BPで追加したSkeletalMeshを探す
 	VisualSkeletalMesh =
 		FindComponentByClass<USkeletalMeshComponent>();
 
@@ -45,34 +46,137 @@ void ATDEnemy::BeginPlay()
 	{
 		PathSpline =
 			PathActor->FindComponentByClass<USplineComponent>();
-
-		if (PathSpline)
-		{
-			const FVector StartLocation =
-				PathSpline->GetLocationAtDistanceAlongSpline(
-					0.0f,
-					ESplineCoordinateSpace::World
-				);
-
-			const FVector StartDirection =
-				PathSpline->GetDirectionAtDistanceAlongSpline(
-					0.0f,
-					ESplineCoordinateSpace::World
-				);
-
-			FRotator StartRotation =
-				StartDirection.Rotation();
-
-			StartRotation.Pitch = 0.0f;
-			StartRotation.Roll = 0.0f;
-			StartRotation.Yaw += FacingYawOffset;
-
-			SetActorLocationAndRotation(
-				StartLocation,
-				StartRotation
-			);
-		}
 	}
+
+	if (!PathSpline)
+	{
+		return;
+	}
+
+	// 親だけがCrowdメンバーを増やす
+	if (
+		SpawnMode == ETDEnemySpawnMode::Crowd &&
+		!bIsCrowdMember &&
+		ColumnCount > 1
+		)
+	{
+		SetupCrowdFormation();
+	}
+
+	UpdateLocationOnSpline();
+}
+
+void ATDEnemy::SetupCrowdFormation()
+{
+	const int32 ActualColumnCount =
+		FMath::Clamp(
+			ColumnCount,
+			1,
+			4
+		);
+
+	const float CenterIndex =
+		(static_cast<float>(ActualColumnCount) - 1.0f)
+		* 0.5f;
+
+	// 元々Spawnされた敵を1人目として使う
+	const float FirstBaseOffset =
+		(0.0f - CenterIndex)
+		* ColumnSpacing;
+
+	PathSideOffset =
+		FirstBaseOffset +
+		FMath::FRandRange(
+			-SideRandomness,
+			SideRandomness
+		);
+
+	DistanceAlongSpline =
+		FMath::FRandRange(
+			0.0f,
+			ForwardRandomness
+		);
+
+	// 残りを同時に生成
+	for (
+		int32 ColumnIndex = 1;
+		ColumnIndex < ActualColumnCount;
+		++ColumnIndex
+		)
+	{
+		const float BaseSideOffset =
+			(
+				static_cast<float>(ColumnIndex)
+				- CenterIndex
+				)
+			* ColumnSpacing;
+
+		const float SideOffset =
+			BaseSideOffset +
+			FMath::FRandRange(
+				-SideRandomness,
+				SideRandomness
+			);
+
+		const float ForwardOffset =
+			FMath::FRandRange(
+				0.0f,
+				ForwardRandomness
+			);
+
+		SpawnCrowdMember(
+			SideOffset,
+			ForwardOffset
+		);
+	}
+}
+
+void ATDEnemy::SpawnCrowdMember(
+	float SideOffset,
+	float ForwardOffset
+)
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParams;
+
+	SpawnParams.SpawnCollisionHandlingOverride =
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	SpawnParams.bDeferConstruction = true;
+
+	ATDEnemy* NewEnemy =
+		World->SpawnActor<ATDEnemy>(
+			GetClass(),
+			GetActorTransform(),
+			SpawnParams
+		);
+
+	if (!NewEnemy)
+	{
+		return;
+	}
+
+	NewEnemy->PathActor =
+		PathActor;
+
+	NewEnemy->bIsCrowdMember =
+		true;
+
+	NewEnemy->PathSideOffset =
+		SideOffset;
+
+	NewEnemy->DistanceAlongSpline =
+		ForwardOffset;
+
+	NewEnemy->FinishSpawning(
+		GetActorTransform()
+	);
 }
 
 void ATDEnemy::ReceiveArrowDamage(
@@ -126,6 +230,8 @@ void ATDEnemy::Die()
 
 	bDead = true;
 
+	OnEnemyDefeated();
+
 	DropCoins();
 
 	Destroy();
@@ -160,7 +266,11 @@ void ATDEnemy::DropCoins()
 	const FVector EnemyLocation =
 		GetActorLocation();
 
-	for (int32 i = 0; i < CoinCount; ++i)
+	for (
+		int32 i = 0;
+		i < CoinCount;
+		++i
+		)
 	{
 		FVector SpawnLocation =
 			EnemyLocation;
@@ -210,35 +320,88 @@ void ATDEnemy::UpdateVisualAnimation(
 
 	AnimationTime += DeltaTime;
 
-	// 上下運動
 	const float BobOffset =
 		FMath::Sin(
 			AnimationTime * BobSpeed
-		) * BobHeight;
+		)
+		* BobHeight;
 
 	FVector NewRelativeLocation =
 		InitialMeshRelativeLocation;
 
-	NewRelativeLocation.Z += BobOffset;
+	NewRelativeLocation.Z +=
+		BobOffset;
 
 	VisualSkeletalMesh->SetRelativeLocation(
 		NewRelativeLocation
 	);
 
-	// 左右に傾く
 	const float Sway =
 		FMath::Sin(
 			AnimationTime * SwaySpeed
-		) * SwayAngle;
+		)
+		* SwayAngle;
 
 	FRotator NewRelativeRotation =
 		InitialMeshRelativeRotation;
 
-	// 前後方向に対して左右へ傾く
-	NewRelativeRotation.Yaw += Sway;
+	NewRelativeRotation.Yaw +=
+		Sway;
 
 	VisualSkeletalMesh->SetRelativeRotation(
 		NewRelativeRotation
+	);
+}
+
+void ATDEnemy::UpdateLocationOnSpline()
+{
+	if (!PathSpline)
+	{
+		return;
+	}
+
+	const float SplineLength =
+		PathSpline->GetSplineLength();
+
+	const float SafeDistance =
+		FMath::Clamp(
+			DistanceAlongSpline,
+			0.0f,
+			SplineLength
+		);
+
+	const FVector CenterLocation =
+		PathSpline->GetLocationAtDistanceAlongSpline(
+			SafeDistance,
+			ESplineCoordinateSpace::World
+		);
+
+	const FVector RightVector =
+		PathSpline->GetRightVectorAtDistanceAlongSpline(
+			SafeDistance,
+			ESplineCoordinateSpace::World
+		);
+
+	const FVector MoveDirection =
+		PathSpline->GetDirectionAtDistanceAlongSpline(
+			SafeDistance,
+			ESplineCoordinateSpace::World
+		);
+
+	const FVector NewLocation =
+		CenterLocation +
+		RightVector * PathSideOffset;
+
+	FRotator NewRotation =
+		MoveDirection.Rotation();
+
+	NewRotation.Pitch = 0.0f;
+	NewRotation.Roll = 0.0f;
+	NewRotation.Yaw += FacingYawOffset;
+
+	SetActorLocationAndRotation(
+		NewLocation,
+		NewRotation
 	);
 }
 
@@ -264,7 +427,10 @@ void ATDEnemy::Tick(
 	const float SplineLength =
 		PathSpline->GetSplineLength();
 
-	if (DistanceAlongSpline >= SplineLength)
+	if (
+		DistanceAlongSpline >=
+		SplineLength
+		)
 	{
 		AActor* BaseActor =
 			UGameplayStatics::GetActorOfClass(
@@ -273,7 +439,9 @@ void ATDEnemy::Tick(
 			);
 
 		ATDBase* Base =
-			Cast<ATDBase>(BaseActor);
+			Cast<ATDBase>(
+				BaseActor
+			);
 
 		if (Base)
 		{
@@ -285,30 +453,9 @@ void ATDEnemy::Tick(
 		return;
 	}
 
-	const FVector NewLocation =
-		PathSpline->GetLocationAtDistanceAlongSpline(
-			DistanceAlongSpline,
-			ESplineCoordinateSpace::World
-		);
+	UpdateLocationOnSpline();
 
-	const FVector MoveDirection =
-		PathSpline->GetDirectionAtDistanceAlongSpline(
-			DistanceAlongSpline,
-			ESplineCoordinateSpace::World
-		);
-
-	FRotator NewRotation =
-		MoveDirection.Rotation();
-
-	NewRotation.Pitch = 0.0f;
-	NewRotation.Roll = 0.0f;
-	NewRotation.Yaw += FacingYawOffset;
-
-	SetActorLocationAndRotation(
-		NewLocation,
-		NewRotation
+	UpdateVisualAnimation(
+		DeltaTime
 	);
-
-	// ゴブリンの見た目だけ揺らす
-	UpdateVisualAnimation(DeltaTime);
 }
