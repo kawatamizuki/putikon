@@ -54,6 +54,7 @@ protected:
 	)
 	float MoveSpeed = 200.0f;
 
+	// ƒSƒuƒŠƒ“ƒ‚ƒfƒ‹‚Ì³–Ê•ûŒü•â³
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -61,6 +62,7 @@ protected:
 	)
 	float FacingYawOffset = 0.0f;
 
+	// ã‰º‚É—h‚ê‚é‚‚³
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -68,6 +70,7 @@ protected:
 	)
 	float BobHeight = 8.0f;
 
+	// ã‰º—h‚ê‚Ì‘¬‚³
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -75,6 +78,7 @@ protected:
 	)
 	float BobSpeed = 7.0f;
 
+	// ¶‰E‚ÉŒX‚­Šp“x
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -82,6 +86,7 @@ protected:
 	)
 	float SwayAngle = 8.0f;
 
+	// ¶‰E‚ÉŒX‚­‘¬‚³
 	UPROPERTY(
 		EditAnywhere,
 		BlueprintReadWrite,
@@ -138,16 +143,10 @@ protected:
 	)
 	int32 MoneyRandomRange = 3;
 
-	// “GŒ‚”j
-	UFUNCTION(
-		BlueprintImplementableEvent,
-		Category = "Audio"
-	)
-	void OnEnemyDefeated();
-
 private:
 	USplineComponent* PathSpline = nullptr;
 
+	// BP‚Å’Ç‰Á‚µ‚½ƒSƒuƒŠƒ“‚ÌSkeletalMesh
 	USkeletalMeshComponent* VisualSkeletalMesh = nullptr;
 
 	FVector InitialMeshRelativeLocation = FVector::ZeroVector;

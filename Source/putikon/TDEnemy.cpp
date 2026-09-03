@@ -126,9 +126,6 @@ void ATDEnemy::Die()
 
 	bDead = true;
 
-	// “GŒ‚”j‰¹—pƒCƒxƒ“ƒg
-	OnEnemyDefeated();
-
 	DropCoins();
 
 	Destroy();
@@ -213,6 +210,7 @@ void ATDEnemy::UpdateVisualAnimation(
 
 	AnimationTime += DeltaTime;
 
+	// ã‰º‰^“®
 	const float BobOffset =
 		FMath::Sin(
 			AnimationTime * BobSpeed
@@ -227,6 +225,7 @@ void ATDEnemy::UpdateVisualAnimation(
 		NewRelativeLocation
 	);
 
+	// ¶‰E‚ÉŒX‚­
 	const float Sway =
 		FMath::Sin(
 			AnimationTime * SwaySpeed
@@ -235,6 +234,7 @@ void ATDEnemy::UpdateVisualAnimation(
 	FRotator NewRelativeRotation =
 		InitialMeshRelativeRotation;
 
+	// ‘OŒã•ûŒü‚É‘Î‚µ‚Ä¶‰E‚ÖŒX‚­
 	NewRelativeRotation.Yaw += Sway;
 
 	VisualSkeletalMesh->SetRelativeRotation(
@@ -309,7 +309,6 @@ void ATDEnemy::Tick(
 		NewRotation
 	);
 
-	UpdateVisualAnimation(
-		DeltaTime
-	);
+	// ƒSƒuƒŠƒ“‚ÌŒ©‚½–Ú‚¾‚¯—h‚ç‚·
+	UpdateVisualAnimation(DeltaTime);
 }
